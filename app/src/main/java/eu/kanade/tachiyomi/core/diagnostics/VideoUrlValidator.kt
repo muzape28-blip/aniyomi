@@ -1,6 +1,6 @@
 package eu.kanade.tachiyomi.core.diagnostics
 
-import android.net.Uri
+import java.net.URI
 
 /** Rejects values that must never reach MPV as a resolved video URL. */
 object VideoUrlValidator {
@@ -13,7 +13,7 @@ object VideoUrlValidator {
         if (normalized.equals("undefined", ignoreCase = true)) return Result(false, "literal-undefined")
 
         return try {
-            val uri = Uri.parse(normalized)
+            val uri = URI(normalized)
             val scheme = uri.scheme?.lowercase()
             if (scheme == null || scheme !in allowedSchemes) {
                 Result(false, "unsupported-scheme")
