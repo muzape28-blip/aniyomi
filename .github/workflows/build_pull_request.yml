@@ -42,17 +42,17 @@ jobs:
       - name: Check code format
         run: ./gradlew spotlessCheck
 
-      - name: Build installable StreamingOnly app
-        run: ./gradlew assembleStreamingOnlyDebug
+      - name: Build installable optimized StreamingOnly app
+        run: ./gradlew assembleStreamingOnlyBenchmark
 
       - name: Run StreamingOnly unit tests
-        run: ./gradlew testStreamingOnlyDebugUnitTest
+        run: ./gradlew testStreamingOnlyBenchmarkUnitTest
 
       - name: Upload APK
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: streamingOnly-armeabi-v7a-debug-apk-${{ github.sha }}
-          path: app/build/outputs/apk/**/*armeabi-v7a*debug*.apk
+          name: streamingOnly-armeabi-v7a-benchmark-apk-${{ github.sha }}
+          path: app/build/outputs/apk/**/*armeabi-v7a*benchmark*.apk
 
       - name: Upload mapping
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
