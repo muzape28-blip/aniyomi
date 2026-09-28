@@ -45,20 +45,20 @@ jobs:
       - name: Check code format
         run: ./gradlew spotlessCheck
 
-      - name: Build app
-        run: ./gradlew assembleRelease
+      - name: Build StreamingOnly app
+        run: ./gradlew assembleStreamingOnlyRelease
 
-      - name: Run unit tests
-        run: ./gradlew testReleaseUnitTest
+      - name: Run StreamingOnly unit tests
+        run: ./gradlew testStreamingOnlyReleaseUnitTest
 
       - name: Upload APK
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: arm64-v8a-${{ github.sha }}
-          path: app/build/outputs/apk/release/app-arm64-v8a-release-unsigned.apk
+          path: app/build/outputs/apk/**/*.apk
 
       - name: Upload mapping
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: mapping-${{ github.sha }}
-          path: app/build/outputs/mapping/release
+          path: app/build/outputs/mapping/**/*
