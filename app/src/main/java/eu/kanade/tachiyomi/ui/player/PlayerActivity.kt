@@ -23,6 +23,7 @@
 package eu.kanade.tachiyomi.ui.player
 
 import android.annotation.SuppressLint
+import android.app.AlertDialog
 import android.app.PictureInPictureParams
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -62,6 +63,7 @@ import aniyomi.core.common.torrent.TorrentServerApi
 import aniyomi.core.common.torrent.TorrentServerUtils
 import com.hippo.unifile.UniFile
 import eu.kanade.presentation.theme.TachiyomiTheme
+import eu.kanade.tachiyomi.core.common.Constants
 import eu.kanade.tachiyomi.animesource.model.ChapterType
 import eu.kanade.tachiyomi.animesource.model.Hoster
 import eu.kanade.tachiyomi.animesource.model.HttpServer
@@ -1162,13 +1164,37 @@ class PlayerActivity : BaseActivity() {
      * this case the activity is closed and a toast is shown to the user.
      */
     private fun setInitialEpisodeError(error: Throwable) {
-        if (error is PlayerViewModel.ExceptionWithStringResource) {
-            toast(error.stringResource)
-        } else {
-            toast(error.message)
-        }
+        val message = error.message ?: "Unable to load this episode"
+        Breadcrumb.log(
+            "STREAM_PLAYER_FAIL",
+            "type=${error.javaClass.simpleName} message=$message",
+        )
         logcat(LogPriority.ERROR, error)
-        finish()
+
+        AlertDialog.Builder(this)
+            .setTitle("Streaming failed")
+            .setMessage("$message\\n\\nTry another source?")
+            .setNegativeButton("Close") { _, _ -> finish() }
+            .setPositiveButton("Choose source") { _, _ ->
+                val animeId = viewModel.currentAnime.value?.id
+                    ?: intent.getLongExtra("animeId", -1L)
+                Breadcrumb.log("STREAM_FALLBACK_SELECTED", "animeId=$animeId")
+                if (animeId > 0) {
+                    startActivity(
+                        Intent(this, eu.kanade.tachiyomi.ui.main.MainActivity::class.java).apply {
+                            action = Constants.SHORTCUT_ANIME
+                            putExtra(Constants.ANIME_EXTRA, animeId)
+                        },
+                    )
+                }
+                finish()
+            }
+            .setOnCancelListener {
+                Breadcrumb.log("STREAM_FALLBACK_CANCELLED")
+                finish()
+            }
+            .show()
+        Breadcrumb.log("STREAM_FALLBACK_OFFERED")
     }
 
     private suspend fun torrentLinkHandler(videoUrl: String, title: String, videoOptions: String) {
