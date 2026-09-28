@@ -7,6 +7,7 @@ import eu.kanade.tachiyomi.animesource.model.Hoster.Companion.toHosterList
 import eu.kanade.tachiyomi.animesource.model.Video
 import eu.kanade.tachiyomi.animesource.online.AnimeHttpSource
 import eu.kanade.tachiyomi.animesource.online.ParsedAnimeHttpSource
+import eu.kanade.tachiyomi.core.diagnostics.Breadcrumb
 import eu.kanade.tachiyomi.data.download.anime.AnimeDownloadManager
 import eu.kanade.tachiyomi.ui.player.controls.components.sheets.HosterState
 import kotlinx.coroutines.CancellationException
@@ -31,12 +32,33 @@ class EpisodeLoader {
          * @param source the source of the anime.
          */
         suspend fun getHosters(episode: Episode, anime: Anime, source: AnimeSource): List<Hoster> {
-            val isDownloaded = isDownload(episode, anime)
-            return when {
-                isDownloaded -> getHostersOnDownloaded(episode, anime, source)
-                source is AnimeHttpSource -> getHostersOnHttp(episode, source)
-                source is LocalAnimeSource -> getHostersOnLocal(episode)
-                else -> error("source not supported")
+            val operationId = newOperationId()
+            Breadcrumb.log(
+                "STREAM_HOSTER_BEGIN",
+                "operationId=$operationId source=${source.javaClass.simpleName} episode=${episode.name}",
+            )
+            return try {
+                val isDownloaded = isDownload(episode, anime)
+                val hosters = when {
+                    isDownloaded -> getHostersOnDownloaded(episode, anime, source)
+                    source is AnimeHttpSource -> getHostersOnHttp(episode, source)
+                    source is LocalAnimeSource -> getHostersOnLocal(episode)
+                    else -> error("source not supported")
+                }
+                Breadcrumb.log(
+                    if (hosters.isEmpty()) "STREAM_HOSTER_EMPTY" else "STREAM_HOSTER_OK",
+                    "operationId=$operationId count=${hosters.size}",
+                )
+                hosters
+            } catch (e: CancellationException) {
+                Breadcrumb.log("STREAM_CANCELLED", "operationId=$operationId stage=hoster")
+                throw e
+            } catch (e: Throwable) {
+                Breadcrumb.log(
+                    "STREAM_HOSTER_FAIL",
+                    "operationId=$operationId type=${e.javaClass.simpleName} message=${e.message}",
+                )
+                throw e
             }
         }
 
@@ -191,16 +213,31 @@ class EpisodeLoader {
                 return HosterState.Idle(hoster.hosterName)
             }
 
+            val operationId = newOperationId()
+            Breadcrumb.log(
+                "STREAM_VIDEO_BEGIN",
+                "operationId=$operationId source=${source.javaClass.simpleName} hoster=${hoster.hosterName}",
+            )
             return try {
                 val videos = getVideos(source, hoster)
+                Breadcrumb.log(
+                    if (videos.isEmpty()) "STREAM_VIDEO_EMPTY" else "STREAM_VIDEO_OK",
+                    "operationId=$operationId count=${videos.size}",
+                )
                 HosterState.Ready(hoster.hosterName, videos, List(videos.size) { Video.State.QUEUE })
+            } catch (e: CancellationException) {
+                Breadcrumb.log("STREAM_CANCELLED", "operationId=$operationId stage=video")
+                throw e
             } catch (e: Exception) {
-                if (e is CancellationException) {
-                    throw e
-                }
-
+                Breadcrumb.log(
+                    "STREAM_VIDEO_FAIL",
+                    "operationId=$operationId type=${e.javaClass.simpleName} message=${e.message}",
+                )
                 HosterState.Error(hoster.hosterName)
             }
         }
+
+        private fun newOperationId(): String =
+            "stream_${System.currentTimeMillis()}_${(0..0xFFFF).random().toString(16)}"
     }
 }

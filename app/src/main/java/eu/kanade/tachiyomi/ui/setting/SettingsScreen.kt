@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import eu.kanade.presentation.more.settings.screen.DiagnosticsScreen
 import eu.kanade.presentation.more.settings.screen.SettingsAppearanceScreen
 import eu.kanade.presentation.more.settings.screen.SettingsDataScreen
 import eu.kanade.presentation.more.settings.screen.SettingsMainScreen
@@ -38,6 +39,7 @@ class SettingsScreen(
                     Destination.About.id -> AboutScreen
                     Destination.DataAndStorage.id -> SettingsDataScreen
                     Destination.Tracking.id -> SettingsTrackingScreen
+                    Destination.Diagnostics.id -> DiagnosticsScreen
                     else -> SettingsMainScreen
                 },
                 content = {
@@ -59,6 +61,7 @@ class SettingsScreen(
                     Destination.About.id -> AboutScreen
                     Destination.DataAndStorage.id -> SettingsDataScreen
                     Destination.Tracking.id -> SettingsTrackingScreen
+                    Destination.Diagnostics.id -> DiagnosticsScreen
                     else -> SettingsAppearanceScreen
                 },
             ) {
@@ -82,5 +85,6 @@ class SettingsScreen(
         data object About : Destination(0)
         data object DataAndStorage : Destination(1)
         data object Tracking : Destination(2)
+        data object Diagnostics : Destination(3)
     }
 }

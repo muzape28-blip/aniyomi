@@ -47,6 +47,7 @@ import eu.kanade.tachiyomi.ui.library.anime.AnimeLibraryTab
 import eu.kanade.tachiyomi.ui.library.manga.MangaLibraryTab
 import eu.kanade.tachiyomi.ui.more.MoreTab
 import eu.kanade.tachiyomi.ui.updates.UpdatesTab
+import eu.kanade.tachiyomi.util.StreamingOnly
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
@@ -83,16 +84,19 @@ object HomeScreen : Screen() {
         val navStyle by uiPreferences.navStyle().collectAsState()
         val navigator = LocalNavigator.currentOrThrow
         TabNavigator(
-            tab = defaultTab,
+            tab = defaultTab.takeIf { !StreamingOnly.enabled || it != MangaLibraryTab } ?: AnimeLibraryTab,
             key = TAB_NAVIGATOR_KEY,
         ) { tabNavigator ->
+            val visibleTabs = navStyle.tabs.filterNot {
+                StreamingOnly.enabled && it == MangaLibraryTab
+            }
             // Provide usable navigator to content screen
             CompositionLocalProvider(LocalNavigator provides navigator) {
                 Scaffold(
                     startBar = {
                         if (isTabletUi()) {
                             NavigationRail {
-                                navStyle.tabs.fastForEach {
+                                visibleTabs.fastForEach {
                                     NavigationRailItem(it)
                                 }
                             }
@@ -109,7 +113,7 @@ object HomeScreen : Screen() {
                                 exit = shrinkVertically(),
                             ) {
                                 NavigationBar {
-                                    navStyle.tabs.fastForEach {
+                                    visibleTabs.fastForEach {
                                         NavigationBarItem(it)
                                     }
                                 }
@@ -170,7 +174,7 @@ object HomeScreen : Screen() {
                     openTabEvent.receiveAsFlow().collectLatest {
                         tabNavigator.current = when (it) {
                             is Tab.AnimeLib -> AnimeLibraryTab
-                            is Tab.Library -> MangaLibraryTab
+                            is Tab.Library -> if (StreamingOnly.enabled) AnimeLibraryTab else MangaLibraryTab
                             is Tab.Updates -> UpdatesTab
                             is Tab.History -> HistoriesTab
                             is Tab.Browse -> {
@@ -189,7 +193,7 @@ object HomeScreen : Screen() {
                         if (it is Tab.AnimeLib && it.animeIdToOpen != null) {
                             navigator.push(AnimeScreen(it.animeIdToOpen))
                         }
-                        if (it is Tab.Library && it.mangaIdToOpen != null) {
+                        if (!StreamingOnly.enabled && it is Tab.Library && it.mangaIdToOpen != null) {
                             navigator.push(MangaScreen(it.mangaIdToOpen))
                         }
                         if (it is Tab.More && it.toDownloads) {

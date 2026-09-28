@@ -26,6 +26,7 @@ android {
         buildConfigField("String", "COMMIT_SHA", "\"${getGitSha()}\"")
         buildConfigField("String", "BUILD_TIME", "\"${getBuildTime(useLastCommitTime = false)}\"")
         buildConfigField("boolean", "UPDATER_ENABLED", "${Config.enableUpdater}")
+        buildConfigField("boolean", "STREAMING_ONLY", "false")
 
         // Put these fields in acra.properties
         // val acraProperties = Properties()
@@ -40,6 +41,20 @@ android {
         // buildConfigField("String", "ACRA_PASSWORD", "\"$acraPassword\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    flavorDimensions += "default"
+
+    productFlavors {
+        create("standard") {
+            dimension = "default"
+        }
+        create("streamingOnly") {
+            dimension = "default"
+            applicationIdSuffix = ".streaming"
+            versionNameSuffix = "-streaming"
+            buildConfigField("boolean", "STREAMING_ONLY", "true")
+        }
     }
 
     buildTypes {
@@ -321,8 +336,8 @@ androidComponents {
     beforeVariants { variantBuilder ->
         // Disables standardBenchmark
         if (variantBuilder.buildType == "benchmark") {
-            variantBuilder.enable = variantBuilder.productFlavors.containsAll(
-                listOf("default" to "dev"),
+            variantBuilder.enable = variantBuilder.productFlavors.contains(
+                "default" to "streamingOnly",
             )
         }
     }

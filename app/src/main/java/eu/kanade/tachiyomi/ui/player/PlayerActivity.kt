@@ -23,6 +23,7 @@
 package eu.kanade.tachiyomi.ui.player
 
 import android.annotation.SuppressLint
+import android.app.AlertDialog
 import android.app.PictureInPictureParams
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -68,6 +69,9 @@ import eu.kanade.tachiyomi.animesource.model.HttpServer
 import eu.kanade.tachiyomi.animesource.model.SerializableHoster.Companion.serialize
 import eu.kanade.tachiyomi.animesource.model.Video
 import eu.kanade.tachiyomi.animesource.online.AnimeHttpSource
+import eu.kanade.tachiyomi.core.common.Constants
+import eu.kanade.tachiyomi.core.diagnostics.Breadcrumb
+import eu.kanade.tachiyomi.core.diagnostics.VideoUrlValidator
 import eu.kanade.tachiyomi.data.notification.NotificationReceiver
 import eu.kanade.tachiyomi.data.notification.Notifications
 import eu.kanade.tachiyomi.data.torrent.service.TorrentServerService
@@ -81,6 +85,7 @@ import eu.kanade.tachiyomi.ui.player.settings.GesturePreferences
 import eu.kanade.tachiyomi.ui.player.settings.PlayerPreferences
 import eu.kanade.tachiyomi.ui.player.utils.ChapterUtils
 import eu.kanade.tachiyomi.ui.player.utils.ChapterUtils.Companion.getStringRes
+import eu.kanade.tachiyomi.util.StreamingOnly
 import eu.kanade.tachiyomi.util.system.powerManager
 import eu.kanade.tachiyomi.util.system.toShareIntent
 import eu.kanade.tachiyomi.util.system.toast
@@ -212,6 +217,9 @@ class PlayerActivity : BaseActivity() {
                 withUIContext {
                     setInitialEpisodeError(exception)
                 }
+                viewModel.updateIsLoadingEpisode(false)
+                viewModel.updateIsLoadingHosters(false)
+                return@launchNonCancellable
             }
 
             viewModel.updateIsLoadingHosters(false)
@@ -754,6 +762,7 @@ class PlayerActivity : BaseActivity() {
         if (player.isExiting) return
         when (eventId) {
             MPVLib.mpvEventId.MPV_EVENT_FILE_LOADED -> {
+                Breadcrumb.log("STREAM_PLAYER_OK", "event=file-loaded")
                 viewModel.viewModelScope.launchIO { fileLoaded() }
             }
             MPVLib.mpvEventId.MPV_EVENT_SEEK -> viewModel.isLoading.update { true }
@@ -1064,6 +1073,23 @@ class PlayerActivity : BaseActivity() {
     fun setVideo(video: Video?, position: Long? = null) {
         if (player.isExiting) return
         if (video == null) return
+
+        if (StreamingOnly.enabled &&
+            (video.videoUrl.startsWith("content://") || video.videoUrl.startsWith("file://"))
+        ) {
+            Breadcrumb.log("STREAM_URL_REJECTED", "reason=local-playback-disabled")
+            return
+        }
+
+        val validation = VideoUrlValidator.validate(video.videoUrl)
+        if (!validation.valid) {
+            Breadcrumb.log(
+                "STREAM_URL_REJECTED",
+                "reason=${validation.reason} title=${video.videoTitle}",
+            )
+            return
+        }
+        Breadcrumb.log("STREAM_PLAYER_BEGIN", "videoTitle=${video.videoTitle}")
         httpServer?.stop()
         httpServer = null
 
@@ -1141,13 +1167,37 @@ class PlayerActivity : BaseActivity() {
      * this case the activity is closed and a toast is shown to the user.
      */
     private fun setInitialEpisodeError(error: Throwable) {
-        if (error is PlayerViewModel.ExceptionWithStringResource) {
-            toast(error.stringResource)
-        } else {
-            toast(error.message)
-        }
+        val message = error.message ?: "Unable to load this episode"
+        Breadcrumb.log(
+            "STREAM_PLAYER_FAIL",
+            "type=${error.javaClass.simpleName} message=$message",
+        )
         logcat(LogPriority.ERROR, error)
-        finish()
+
+        AlertDialog.Builder(this)
+            .setTitle("Streaming failed")
+            .setMessage("$message\\n\\nTry another source?")
+            .setNegativeButton("Close") { _, _ -> finish() }
+            .setPositiveButton("Choose source") { _, _ ->
+                val animeId = viewModel.currentAnime.value?.id
+                    ?: intent.getLongExtra("animeId", -1L)
+                Breadcrumb.log("STREAM_FALLBACK_SELECTED", "animeId=$animeId")
+                if (animeId > 0) {
+                    startActivity(
+                        Intent(this, eu.kanade.tachiyomi.ui.main.MainActivity::class.java).apply {
+                            action = Constants.SHORTCUT_ANIME
+                            putExtra(Constants.ANIME_EXTRA, animeId)
+                        },
+                    )
+                }
+                finish()
+            }
+            .setOnCancelListener {
+                Breadcrumb.log("STREAM_FALLBACK_CANCELLED")
+                finish()
+            }
+            .show()
+        Breadcrumb.log("STREAM_FALLBACK_OFFERED")
     }
 
     private suspend fun torrentLinkHandler(videoUrl: String, title: String, videoOptions: String) {

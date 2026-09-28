@@ -45,6 +45,7 @@ import eu.kanade.presentation.util.isTabletUi
 import eu.kanade.tachiyomi.animesource.AnimeSource
 import eu.kanade.tachiyomi.animesource.model.FetchType
 import eu.kanade.tachiyomi.animesource.online.AnimeHttpSource
+import eu.kanade.tachiyomi.core.diagnostics.Breadcrumb
 import eu.kanade.tachiyomi.data.torrent.service.TorrentServerService
 import eu.kanade.tachiyomi.source.anime.isLocalOrStub
 import eu.kanade.tachiyomi.source.anime.isSourceForTorrents
@@ -61,6 +62,7 @@ import eu.kanade.tachiyomi.ui.library.anime.AnimeLibraryTab
 import eu.kanade.tachiyomi.ui.main.MainActivity
 import eu.kanade.tachiyomi.ui.setting.SettingsScreen
 import eu.kanade.tachiyomi.ui.webview.WebViewScreen
+import eu.kanade.tachiyomi.util.StreamingOnly
 import eu.kanade.tachiyomi.util.system.copyToClipboard
 import eu.kanade.tachiyomi.util.system.toShareIntent
 import eu.kanade.tachiyomi.util.system.toast
@@ -143,7 +145,9 @@ class AnimeScreen(
                 }
             },
             onDownloadEpisode = screenModel::runEpisodeDownloadActions.takeIf {
-                !successState.source.isLocalOrStub() && successState.anime.fetchType == FetchType.Episodes
+                StreamingOnly.nonPlaybackFeaturesEnabled &&
+                    !successState.source.isLocalOrStub() &&
+                    successState.anime.fetchType == FetchType.Episodes
             },
             onAddToLibraryClicked = {
                 screenModel.toggleFavorite()
@@ -189,15 +193,21 @@ class AnimeScreen(
                 )
             }.takeIf { isAnimeHttpSource },
             onDownloadActionClicked = screenModel::runDownloadAction.takeIf {
-                !successState.source.isLocalOrStub() && successState.anime.fetchType == FetchType.Episodes
+                StreamingOnly.nonPlaybackFeaturesEnabled &&
+                    !successState.source.isLocalOrStub() &&
+                    successState.anime.fetchType == FetchType.Episodes
             },
             onEditCategoryClicked = screenModel::showChangeCategoryDialog.takeIf { successState.anime.favorite },
             onEditFetchIntervalClicked = screenModel::showSetAnimeFetchIntervalDialog.takeIf {
                 successState.anime.favorite
             },
             onMigrateClicked = {
+                Breadcrumb.log(
+                    "STREAM_SOURCE_SELECTION_BEGIN",
+                    "animeId=${successState.anime.id} source=${successState.source.id}",
+                )
                 navigator.push(MigrateAnimeSearchScreen(successState.anime.id))
-            }.takeIf { successState.anime.favorite },
+            },
             changeAnimeSkipIntro = screenModel::showAnimeSkipIntroDialog
                 .takeIf { successState.anime.favorite && successState.anime.fetchType == FetchType.Episodes },
             onMultiBookmarkClicked = screenModel::bookmarkEpisodes,

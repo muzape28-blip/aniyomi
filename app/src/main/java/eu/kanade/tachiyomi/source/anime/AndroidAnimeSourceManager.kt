@@ -3,8 +3,10 @@ package eu.kanade.tachiyomi.source.anime
 import android.content.Context
 import eu.kanade.tachiyomi.animesource.AnimeSource
 import eu.kanade.tachiyomi.animesource.online.AnimeHttpSource
+import eu.kanade.tachiyomi.core.diagnostics.Breadcrumb
 import eu.kanade.tachiyomi.data.download.anime.AnimeDownloadManager
 import eu.kanade.tachiyomi.extension.anime.AnimeExtensionManager
+import eu.kanade.tachiyomi.util.StreamingOnly
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -48,18 +50,17 @@ class AndroidAnimeSourceManager(
         scope.launch {
             extensionManager.installedExtensionsFlow
                 .collectLatest { extensions ->
-                    val mutableMap = ConcurrentHashMap<Long, AnimeSource>(
-                        mapOf(
-                            LocalAnimeSource.ID to LocalAnimeSource(
-                                context,
-                                Injekt.get(),
-                                Injekt.get(),
-                                Injekt.get(),
-                                Injekt.get(),
-                                Injekt.get(),
-                            ),
-                        ),
-                    )
+                    val mutableMap = ConcurrentHashMap<Long, AnimeSource>()
+                    if (!StreamingOnly.enabled) {
+                        mutableMap[LocalAnimeSource.ID] = LocalAnimeSource(
+                            context,
+                            Injekt.get(),
+                            Injekt.get(),
+                            Injekt.get(),
+                            Injekt.get(),
+                            Injekt.get(),
+                        )
+                    }
                     extensions.forEach { extension ->
                         extension.sources.forEach {
                             mutableMap[it.id] = it
@@ -68,6 +69,10 @@ class AndroidAnimeSourceManager(
                     }
                     sourcesMapFlow.value = mutableMap
                     _isInitialized.value = true
+                    Breadcrumb.log(
+                        "SOURCE_MANAGER_READY",
+                        "sources=${mutableMap.size} streamingOnly=${StreamingOnly.enabled}",
+                    )
                 }
         }
 

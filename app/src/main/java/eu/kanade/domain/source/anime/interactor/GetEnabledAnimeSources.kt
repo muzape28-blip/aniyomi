@@ -1,6 +1,7 @@
 package eu.kanade.domain.source.anime.interactor
 
 import eu.kanade.domain.source.service.SourcePreferences
+import eu.kanade.tachiyomi.util.StreamingOnly
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -24,7 +25,9 @@ class GetEnabledAnimeSources(
             repository.getAnimeSources(),
         ) { pinnedSourceIds, enabledLanguages, disabledSources, lastUsedSource, sources ->
             sources
-                .filter { it.lang in enabledLanguages || it.id == LocalAnimeSource.ID }
+                .filter {
+                    StreamingOnly.enabled || it.lang in enabledLanguages || it.id == LocalAnimeSource.ID
+                }
                 .filterNot { it.id.toString() in disabledSources }
                 .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
                 .flatMap {

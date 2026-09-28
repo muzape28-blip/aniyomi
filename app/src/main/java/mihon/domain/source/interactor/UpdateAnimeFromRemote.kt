@@ -8,8 +8,10 @@ import eu.kanade.domain.items.episode.interactor.SyncEpisodesWithSource
 import eu.kanade.domain.items.episode.model.toSEpisode
 import eu.kanade.tachiyomi.animesource.AnimeSource
 import eu.kanade.tachiyomi.animesource.model.SAnime
+import eu.kanade.tachiyomi.core.diagnostics.Breadcrumb
 import eu.kanade.tachiyomi.data.cache.AnimeBackgroundCache
 import eu.kanade.tachiyomi.data.cache.AnimeCoverCache
+import kotlinx.coroutines.CancellationException
 import logcat.LogPriority
 import mihon.domain.source.models.RemoteAnimeEpisodeUpdate
 import mihon.domain.source.models.RemoteAnimeSeasonUpdate
@@ -59,6 +61,12 @@ class UpdateAnimeFromRemote(
         manualFetch: Boolean = false,
         fetchWindow: Pair<Long, Long> = Pair(0, 0),
     ): Result<RemoteAnimeEpisodeUpdate> {
+        val operationId = "episodes_${System.currentTimeMillis()}"
+        Breadcrumb.log(
+            "STREAM_TITLE_MAP_BEGIN",
+            "operationId=$operationId source=${source.id} animeId=${anime.id}",
+        )
+        Breadcrumb.log("STREAM_EPISODE_BEGIN", "operationId=$operationId animeId=${anime.id}")
         return try {
             val episodes = episodeRepository.getEpisodeByAnimeId(anime.id)
                 .sortedBy { it.sourceOrder }
@@ -79,8 +87,20 @@ class UpdateAnimeFromRemote(
                 fetchWindow = fetchWindow,
             )
             val updatedAnime = animeRepository.getAnimeById(anime.id)
+            Breadcrumb.log("STREAM_TITLE_MAP_OK", "operationId=$operationId source=${source.id}")
+            Breadcrumb.log(
+                if (newEpisodes.isEmpty()) "STREAM_EPISODE_EMPTY" else "STREAM_EPISODE_OK",
+                "operationId=$operationId count=${newEpisodes.size}",
+            )
             Result.success(RemoteAnimeEpisodeUpdate(anime = updatedAnime, newEpisodes = newEpisodes))
+        } catch (e: CancellationException) {
+            Breadcrumb.log("STREAM_CANCELLED", "operationId=$operationId stage=episode-update")
+            throw e
         } catch (e: Exception) {
+            Breadcrumb.log(
+                "STREAM_EPISODE_FAIL",
+                "operationId=$operationId type=${e.javaClass.simpleName} message=${e.message}",
+            )
             logcat(LogPriority.ERROR, e)
             Result.failure(e)
         }
@@ -112,6 +132,11 @@ class UpdateAnimeFromRemote(
         manualFetch: Boolean = false,
         fetchWindow: Pair<Long, Long> = Pair(0, 0),
     ): Result<RemoteAnimeSeasonUpdate> {
+        val operationId = "seasons_${System.currentTimeMillis()}"
+        Breadcrumb.log(
+            "STREAM_TITLE_MAP_BEGIN",
+            "operationId=$operationId source=${source.id} animeId=${anime.id}",
+        )
         return try {
             val seasons = animeRepository.getAnimeSeasonsById(anime.id)
                 .sortedBy { it.anime.seasonSourceOrder }
@@ -132,8 +157,20 @@ class UpdateAnimeFromRemote(
                 fetchWindow = fetchWindow,
             )
             val updatedAnime = animeRepository.getAnimeById(anime.id)
+            Breadcrumb.log("STREAM_TITLE_MAP_OK", "operationId=$operationId source=${source.id}")
+            Breadcrumb.log(
+                if (newSeasons.isEmpty()) "STREAM_EPISODE_EMPTY" else "STREAM_EPISODE_OK",
+                "operationId=$operationId seasons=${newSeasons.size}",
+            )
             Result.success(RemoteAnimeSeasonUpdate(anime = updatedAnime, newSeasons = newSeasons))
+        } catch (e: CancellationException) {
+            Breadcrumb.log("STREAM_CANCELLED", "operationId=$operationId stage=season-update")
+            throw e
         } catch (e: Exception) {
+            Breadcrumb.log(
+                "STREAM_EPISODE_FAIL",
+                "operationId=$operationId type=${e.javaClass.simpleName} message=${e.message}",
+            )
             logcat(LogPriority.ERROR, e)
             Result.failure(e)
         }

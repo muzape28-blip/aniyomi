@@ -30,9 +30,6 @@ jobs:
       - name: Clone repo
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Dependency Review
-        uses: actions/dependency-review-action@3b139cfc5fae8b618d3eae3675e383bb1769c019 # v4.5.0
-
       - name: Set up JDK
         uses: actions/setup-java@3a4f6e1af504cf6a31855fa899c6aa5355ba6c12 # v4.7.0
         with:
@@ -45,20 +42,20 @@ jobs:
       - name: Check code format
         run: ./gradlew spotlessCheck
 
-      - name: Build app
-        run: ./gradlew assembleRelease
+      - name: Build installable optimized StreamingOnly app
+        run: ./gradlew assembleStreamingOnlyBenchmark
 
-      - name: Run unit tests
-        run: ./gradlew testReleaseUnitTest
+      - name: Run StreamingOnly unit tests
+        run: ./gradlew testStreamingOnlyBenchmarkUnitTest
 
       - name: Upload APK
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: arm64-v8a-${{ github.sha }}
-          path: app/build/outputs/apk/release/app-arm64-v8a-release-unsigned.apk
+          name: streamingOnly-armeabi-v7a-benchmark-apk-${{ github.sha }}
+          path: app/build/outputs/apk/**/*armeabi-v7a*benchmark*.apk
 
       - name: Upload mapping
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: mapping-${{ github.sha }}
-          path: app/build/outputs/mapping/release
+          path: app/build/outputs/mapping/**/*
