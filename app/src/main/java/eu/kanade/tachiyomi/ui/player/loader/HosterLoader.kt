@@ -2,6 +2,8 @@ package eu.kanade.tachiyomi.ui.player.loader
 
 import eu.kanade.tachiyomi.animesource.AnimeSource
 import eu.kanade.tachiyomi.animesource.model.Hoster
+import eu.kanade.tachiyomi.core.diagnostics.Breadcrumb
+import eu.kanade.tachiyomi.core.diagnostics.VideoUrlValidator
 import eu.kanade.tachiyomi.animesource.model.Video
 import eu.kanade.tachiyomi.animesource.online.AnimeHttpSource
 import eu.kanade.tachiyomi.ui.player.controls.components.sheets.HosterState
@@ -47,7 +49,8 @@ class HosterLoader {
 
             // Check for first video with non-empty url
             val firstValid: (Pair<Video, Video.State>) -> Boolean = { (v, s) ->
-                v.videoUrl.isNotEmpty() && (s == Video.State.READY || s == Video.State.QUEUE)
+                VideoUrlValidator.validate(v.videoUrl).valid &&
+                    (s == Video.State.READY || s == Video.State.QUEUE)
             }
             val firstAvailableHosterIdx = availableHosters.indexOfFirst {
                 (it.value as HosterState.Ready).let { hoster ->
@@ -150,20 +153,38 @@ class HosterLoader {
         }
 
         suspend fun getResolvedVideo(source: AnimeSource?, video: Video): Video? {
+            val operationId = "resolve_${System.currentTimeMillis()}"
+            Breadcrumb.log(
+                "STREAM_RESOLVE_BEGIN",
+                "operationId=$operationId source=${source?.javaClass?.simpleName} title=${video.videoTitle}",
+            )
             val resolvedVideo = if (source is AnimeHttpSource && !video.initialized) {
                 try {
                     source.resolveVideo(video)
-                } catch (e: Exception) {
-                    if (e is CancellationException) {
-                        throw e
-                    }
-
+                } catch (e: CancellationException) {
+                    Breadcrumb.log("STREAM_CANCELLED", "operationId=$operationId stage=resolve")
+                    throw e
+                } catch (e: Throwable) {
+                    Breadcrumb.log(
+                        "STREAM_RESOLVE_FAIL",
+                        "operationId=$operationId type=${e.javaClass.simpleName} message=${e.message}",
+                    )
                     null
                 }
             } else {
                 video
             }
 
+            val validation = VideoUrlValidator.validate(resolvedVideo?.videoUrl)
+            if (!validation.valid) {
+                Breadcrumb.log(
+                    "STREAM_URL_REJECTED",
+                    "operationId=$operationId stage=resolve reason=${validation.reason}",
+                )
+                return null
+            }
+
+            Breadcrumb.log("STREAM_RESOLVE_OK", "operationId=$operationId")
             return resolvedVideo?.copy(initialized = true)
         }
     }

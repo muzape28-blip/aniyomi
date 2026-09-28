@@ -53,6 +53,8 @@ import eu.kanade.presentation.more.settings.screen.player.custombutton.CustomBut
 import eu.kanade.presentation.more.settings.screen.player.custombutton.getButtons
 import eu.kanade.tachiyomi.animesource.AnimeSource
 import eu.kanade.tachiyomi.animesource.model.ChapterType
+import eu.kanade.tachiyomi.core.diagnostics.Breadcrumb
+import eu.kanade.tachiyomi.core.diagnostics.VideoUrlValidator
 import eu.kanade.tachiyomi.animesource.model.Hoster
 import eu.kanade.tachiyomi.animesource.model.SerializableHoster.Companion.toHosterList
 import eu.kanade.tachiyomi.animesource.model.ThumbnailInfo
@@ -1256,6 +1258,11 @@ class PlayerViewModel @JvmOverloads constructor(
         hostIndex: Int,
         vidIndex: Int,
     ): Pair<InitResult, Result<Boolean>> {
+        val operationId = "episode_${System.currentTimeMillis()}"
+        Breadcrumb.log(
+            "STREAM_EPISODE_BEGIN",
+            "operationId=$operationId animeId=$animeId episodeId=$initialEpisodeId",
+        )
         val defaultResult = InitResult(currentHosterList, qualityIndex, null)
         if (!needsInit(animeId, initialEpisodeId)) return Pair(defaultResult, Result.success(true))
         return try {
@@ -1305,9 +1312,13 @@ class PlayerViewModel @JvmOverloads constructor(
                 } else {
                     EpisodeLoader.getHosters(currentEp.toDomainEpisode()!!, anime, source)
                         .takeIf { it.isNotEmpty() }
-                        ?.also { currentHosterList = it }
+                        ?.also {
+                            currentHosterList = it
+                            Breadcrumb.log("STREAM_EPISODE_OK", "operationId=$operationId hosters=${it.size}")
+                        }
                         ?: run {
                             currentHosterList = null
+                            Breadcrumb.log("STREAM_EPISODE_EMPTY", "operationId=$operationId stage=hoster")
                             throw ExceptionWithStringResource("Hoster list is empty", AYMR.strings.no_hosters)
                         }
                 }
@@ -1322,7 +1333,14 @@ class PlayerViewModel @JvmOverloads constructor(
                 // Unlikely but okay
                 Pair(defaultResult, Result.success(false))
             }
+        } catch (e: CancellationException) {
+            Breadcrumb.log("STREAM_CANCELLED", "operationId=$operationId stage=episode")
+            Pair(defaultResult, Result.failure(e))
         } catch (e: Throwable) {
+            Breadcrumb.log(
+                "STREAM_EPISODE_FAIL",
+                "operationId=$operationId type=${e.javaClass.simpleName} message=${e.message}",
+            )
             Pair(defaultResult, Result.failure(e))
         }
     }
@@ -1457,7 +1475,15 @@ class PlayerViewModel @JvmOverloads constructor(
     }
 
     private suspend fun loadVideo(source: AnimeSource?, video: Video, hosterIndex: Int, videoIndex: Int): Boolean {
-        val selectedHosterState = (_hosterState.value[hosterIndex] as? HosterState.Ready) ?: return false
+        val operationId = "video_${System.currentTimeMillis()}"
+        Breadcrumb.log(
+            "STREAM_RESOLVE_BEGIN",
+            "operationId=$operationId source=${source?.javaClass?.simpleName} hosterIndex=$hosterIndex videoIndex=$videoIndex",
+        )
+        val selectedHosterState = (_hosterState.value[hosterIndex] as? HosterState.Ready) ?: run {
+            Breadcrumb.log("STREAM_RESOLVE_FAIL", "operationId=$operationId reason=hoster-not-ready")
+            return false
+        }
         updateIsLoadingEpisode(true)
 
         val oldSelectedIndex = _selectedHosterVideoIndex.value
@@ -1478,7 +1504,12 @@ class PlayerViewModel @JvmOverloads constructor(
             video
         }
 
-        if (resolvedVideo == null || resolvedVideo.videoUrl.isEmpty()) {
+        val resolvedValidation = VideoUrlValidator.validate(resolvedVideo?.videoUrl)
+        if (!resolvedValidation.valid) {
+            Breadcrumb.log(
+                "STREAM_URL_REJECTED",
+                "operationId=$operationId stage=player reason=${resolvedValidation.reason}",
+            )
             if (currentVideo.value == null) {
                 _hosterState.updateAt(
                     hosterIndex,
@@ -1491,6 +1522,7 @@ class PlayerViewModel @JvmOverloads constructor(
                         _selectedHosterVideoIndex.update { _ -> Pair(-1, -1) }
                         return false
                     } else {
+                        Breadcrumb.log("STREAM_VIDEO_EMPTY", "operationId=$operationId reason=no-resolved-video")
                         throw ExceptionWithStringResource("No available videos", AYMR.strings.no_available_videos)
                     }
                 }
@@ -1508,20 +1540,22 @@ class PlayerViewModel @JvmOverloads constructor(
             }
         }
 
+        val validResolvedVideo = resolvedVideo ?: return false
         _hosterState.updateAt(
             hosterIndex,
-            selectedHosterState.getChangedAt(videoIndex, resolvedVideo, Video.State.READY),
+            selectedHosterState.getChangedAt(videoIndex, validResolvedVideo, Video.State.READY),
         )
 
-        _currentVideo.update { _ -> resolvedVideo }
+        _currentVideo.update { _ -> validResolvedVideo }
 
         qualityIndex = Pair(hosterIndex, videoIndex)
 
         viewModelScope.launchIO {
-            loadThumbnails(resolvedVideo, source)
+            loadThumbnails(validResolvedVideo, source)
         }
 
-        activity.setVideo(resolvedVideo)
+        Breadcrumb.log("STREAM_RESOLVE_OK", "operationId=$operationId")
+        activity.setVideo(validResolvedVideo)
         return true
     }
 
