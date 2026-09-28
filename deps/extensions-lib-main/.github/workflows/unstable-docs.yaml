@@ -1,0 +1,35 @@
+name: Generate unstable docs
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - '**.yaml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: zulu
+
+      - name: Build documentation
+        run: ./gradlew :library:dokkaGeneratePublicationHtml
+
+      - name: Publish documentation
+        uses: JamesIves/github-pages-deploy-action@releases/v4
+        with:
+          BRANCH: gh-pages
+          FOLDER: library/build/docs/html
+          repository-name: aniyomiorg/unstable-extensions-lib-docs
+          ssh-key: ${{ secrets.DEPLOY_KEY_UNSTABLE_DOCS }}

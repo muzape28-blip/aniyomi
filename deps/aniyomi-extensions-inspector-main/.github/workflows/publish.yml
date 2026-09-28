@@ -1,0 +1,45 @@
+name: CI Publish
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build artifacts and create draft release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout ${{ github.ref }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Validate Gradle Wrapper
+        uses: gradle/wrapper-validation-action@v1
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: zulu
+
+      - name: Build project
+        uses: gradle/gradle-build-action@v2
+        with:
+          arguments: :inspector:shadowJar
+
+      - name: Upload Release
+        uses: xresloader/upload-to-github-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          file: "inspector/build/*.jar"
+          tags: true
+          draft: true
+          verbose: true

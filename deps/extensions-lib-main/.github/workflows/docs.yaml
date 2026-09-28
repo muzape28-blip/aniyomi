@@ -1,0 +1,32 @@
+name: Generate docs
+
+on:
+  push:
+    tags:
+      - v*
+    paths-ignore:
+      - '**.md'
+      - '**.yaml'
+
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: zulu
+
+      - name: Build documentation
+        run: ./gradlew :library:dokkaGeneratePublicationHtml
+
+      - name: Publish documentation
+        uses: JamesIves/github-pages-deploy-action@releases/v4
+        with:
+          BRANCH: gh-pages
+          FOLDER: library/build/docs/html

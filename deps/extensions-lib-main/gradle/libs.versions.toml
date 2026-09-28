@@ -1,0 +1,25 @@
+[versions]
+agp_version = "9.2.1"
+coroutines_version = "1.10.2"
+kotlin_version = "2.4.0"
+nanohttpd = "2.3.1"
+serialization_version = "1.9.0"
+dokka_version = "2.2.0"
+maven-publish = "0.36.0"
+
+[libraries]
+coroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines_version" }
+
+kotlin-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization_version" }
+kotlin-json-okio = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json-okio", version.ref = "serialization_version" }
+
+injekt-core = { module = "com.github.mihonapp:injekt", version = "91edab2317" }
+jsoup = { module = "org.jsoup:jsoup", version = "1.22.2" }
+okhttp = { module = "com.squareup.okhttp3:okhttp", version = "5.4.0" }
+nanohttpd = { module = "org.nanohttpd:nanohttpd", version.ref = "nanohttpd" }
+
+[plugins]
+android-library = { id = "com.android.library", version.ref = "agp_version" }
+dokka = { id = "org.jetbrains.dokka", version.ref = "dokka_version" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin_version" }
+maven-publish = { id = "com.vanniktech.maven.publish", version.ref = "maven-publish" }
