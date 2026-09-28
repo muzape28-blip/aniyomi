@@ -2,6 +2,7 @@ package eu.kanade.tachiyomi.crash
 
 import android.content.Context
 import android.content.Intent
+import eu.kanade.tachiyomi.core.diagnostics.Breadcrumb
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
@@ -30,6 +31,10 @@ class GlobalExceptionHandler private constructor(
     }
 
     override fun uncaughtException(thread: Thread, exception: Throwable) {
+        Breadcrumb.log(
+            "FATAL_JVM",
+            "thread=${thread.name} type=${exception.javaClass.simpleName} message=${exception.message}",
+        )
         logcat(priority = LogPriority.ERROR, throwable = exception)
         launchActivity(applicationContext, activityToBeLaunched, exception)
         defaultHandler.uncaughtException(thread, exception)

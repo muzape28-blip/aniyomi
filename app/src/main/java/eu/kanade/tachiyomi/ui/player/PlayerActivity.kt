@@ -67,6 +67,8 @@ import eu.kanade.tachiyomi.animesource.model.Hoster
 import eu.kanade.tachiyomi.animesource.model.HttpServer
 import eu.kanade.tachiyomi.animesource.model.SerializableHoster.Companion.serialize
 import eu.kanade.tachiyomi.animesource.model.Video
+import eu.kanade.tachiyomi.core.diagnostics.Breadcrumb
+import eu.kanade.tachiyomi.core.diagnostics.VideoUrlValidator
 import eu.kanade.tachiyomi.animesource.online.AnimeHttpSource
 import eu.kanade.tachiyomi.data.notification.NotificationReceiver
 import eu.kanade.tachiyomi.data.notification.Notifications
@@ -754,6 +756,7 @@ class PlayerActivity : BaseActivity() {
         if (player.isExiting) return
         when (eventId) {
             MPVLib.mpvEventId.MPV_EVENT_FILE_LOADED -> {
+                Breadcrumb.log("STREAM_PLAYER_OK", "event=file-loaded")
                 viewModel.viewModelScope.launchIO { fileLoaded() }
             }
             MPVLib.mpvEventId.MPV_EVENT_SEEK -> viewModel.isLoading.update { true }
@@ -1064,6 +1067,16 @@ class PlayerActivity : BaseActivity() {
     fun setVideo(video: Video?, position: Long? = null) {
         if (player.isExiting) return
         if (video == null) return
+
+        val validation = VideoUrlValidator.validate(video.videoUrl)
+        if (!validation.valid) {
+            Breadcrumb.log(
+                "STREAM_URL_REJECTED",
+                "reason=${validation.reason} title=${video.videoTitle}",
+            )
+            return
+        }
+        Breadcrumb.log("STREAM_PLAYER_BEGIN", "videoTitle=${video.videoTitle}")
         httpServer?.stop()
         httpServer = null
 

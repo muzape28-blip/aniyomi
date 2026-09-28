@@ -27,6 +27,7 @@ import eu.kanade.domain.SYDomainModule
 import eu.kanade.domain.base.BasePreferences
 import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.domain.ui.model.setAppCompatDelegateThemeMode
+import eu.kanade.tachiyomi.core.diagnostics.Breadcrumb
 import eu.kanade.tachiyomi.crash.CrashActivity
 import eu.kanade.tachiyomi.crash.GlobalExceptionHandler
 import eu.kanade.tachiyomi.data.coil.AnimeCoverKeyer
@@ -81,6 +82,15 @@ class App : Application(), DefaultLifecycleObserver, SingletonImageLoader.Factor
     @SuppressLint("LaunchActivityFromNotification")
     override fun onCreate() {
         super<Application>.onCreate()
+
+        // Initialize before extension, repository, WebView, and player work.
+        // Breadcrumb is fail-safe and persists the last flushed stage on disk.
+        Breadcrumb.init(this)
+        Breadcrumb.log(
+            "APP_START",
+            "version=${BuildConfig.VERSION_NAME} api=${Build.VERSION.SDK_INT} abi=${Build.SUPPORTED_ABIS.firstOrNull()}",
+        )
+
         patchInjekt()
 
         GlobalExceptionHandler.initialize(applicationContext, CrashActivity::class.java)

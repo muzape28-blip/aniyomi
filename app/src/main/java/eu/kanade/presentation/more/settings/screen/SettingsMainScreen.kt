@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ChromeReaderMode
+import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.CollectionsBookmark
 import androidx.compose.material.icons.outlined.Explore
@@ -235,6 +236,12 @@ object SettingsMainScreen : Screen() {
             subtitleRes = MR.strings.pref_advanced_summary,
             icon = Icons.Outlined.Code,
             screen = SettingsAdvancedScreen,
+        ),
+        Item(
+            titleRes = MR.strings.pref_debug_info,
+            formatSubtitle = { "Breadcrumb logs, crash evidence, and streaming diagnostics" },
+            icon = Icons.Outlined.BugReport,
+            screen = DiagnosticsScreen,
         ),
         Item(
             titleRes = MR.strings.pref_category_about,
