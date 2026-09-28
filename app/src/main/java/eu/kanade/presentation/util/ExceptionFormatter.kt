@@ -13,7 +13,8 @@ import tachiyomi.i18n.MR
 import tachiyomi.i18n.aniyomi.AYMR
 import java.net.UnknownHostException
 
-context(context: Context) val Throwable.formattedMessage: String
+context(context: Context)
+val Throwable.formattedMessage: String
     get() {
         when (this) {
             is DisabledTorrServerException -> return context.stringResource(AYMR.strings.torrserver_disabled)
