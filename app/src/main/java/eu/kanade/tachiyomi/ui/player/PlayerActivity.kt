@@ -69,6 +69,7 @@ import eu.kanade.tachiyomi.animesource.model.SerializableHoster.Companion.serial
 import eu.kanade.tachiyomi.animesource.model.Video
 import eu.kanade.tachiyomi.core.diagnostics.Breadcrumb
 import eu.kanade.tachiyomi.core.diagnostics.VideoUrlValidator
+import eu.kanade.tachiyomi.util.StreamingOnly
 import eu.kanade.tachiyomi.animesource.online.AnimeHttpSource
 import eu.kanade.tachiyomi.data.notification.NotificationReceiver
 import eu.kanade.tachiyomi.data.notification.Notifications
@@ -1067,6 +1068,13 @@ class PlayerActivity : BaseActivity() {
     fun setVideo(video: Video?, position: Long? = null) {
         if (player.isExiting) return
         if (video == null) return
+
+        if (StreamingOnly.enabled &&
+            (video.videoUrl.startsWith("content://") || video.videoUrl.startsWith("file://"))
+        ) {
+            Breadcrumb.log("STREAM_URL_REJECTED", "reason=local-playback-disabled")
+            return
+        }
 
         val validation = VideoUrlValidator.validate(video.videoUrl)
         if (!validation.valid) {

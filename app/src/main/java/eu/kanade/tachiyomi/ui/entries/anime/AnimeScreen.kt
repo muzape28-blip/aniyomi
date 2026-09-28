@@ -46,6 +46,7 @@ import eu.kanade.tachiyomi.animesource.AnimeSource
 import eu.kanade.tachiyomi.animesource.model.FetchType
 import eu.kanade.tachiyomi.core.diagnostics.Breadcrumb
 import eu.kanade.tachiyomi.animesource.online.AnimeHttpSource
+import eu.kanade.tachiyomi.util.StreamingOnly
 import eu.kanade.tachiyomi.data.torrent.service.TorrentServerService
 import eu.kanade.tachiyomi.source.anime.isLocalOrStub
 import eu.kanade.tachiyomi.source.anime.isSourceForTorrents
@@ -144,7 +145,9 @@ class AnimeScreen(
                 }
             },
             onDownloadEpisode = screenModel::runEpisodeDownloadActions.takeIf {
-                !successState.source.isLocalOrStub() && successState.anime.fetchType == FetchType.Episodes
+                StreamingOnly.nonPlaybackFeaturesEnabled &&
+                    !successState.source.isLocalOrStub() &&
+                    successState.anime.fetchType == FetchType.Episodes
             },
             onAddToLibraryClicked = {
                 screenModel.toggleFavorite()
@@ -190,7 +193,9 @@ class AnimeScreen(
                 )
             }.takeIf { isAnimeHttpSource },
             onDownloadActionClicked = screenModel::runDownloadAction.takeIf {
-                !successState.source.isLocalOrStub() && successState.anime.fetchType == FetchType.Episodes
+                StreamingOnly.nonPlaybackFeaturesEnabled &&
+                    !successState.source.isLocalOrStub() &&
+                    successState.anime.fetchType == FetchType.Episodes
             },
             onEditCategoryClicked = screenModel::showChangeCategoryDialog.takeIf { successState.anime.favorite },
             onEditFetchIntervalClicked = screenModel::showSetAnimeFetchIntervalDialog.takeIf {
