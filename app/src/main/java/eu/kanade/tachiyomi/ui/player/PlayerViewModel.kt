@@ -53,8 +53,6 @@ import eu.kanade.presentation.more.settings.screen.player.custombutton.CustomBut
 import eu.kanade.presentation.more.settings.screen.player.custombutton.getButtons
 import eu.kanade.tachiyomi.animesource.AnimeSource
 import eu.kanade.tachiyomi.animesource.model.ChapterType
-import eu.kanade.tachiyomi.core.diagnostics.Breadcrumb
-import eu.kanade.tachiyomi.core.diagnostics.VideoUrlValidator
 import eu.kanade.tachiyomi.animesource.model.Hoster
 import eu.kanade.tachiyomi.animesource.model.SerializableHoster.Companion.toHosterList
 import eu.kanade.tachiyomi.animesource.model.ThumbnailInfo
@@ -62,6 +60,8 @@ import eu.kanade.tachiyomi.animesource.model.TileInfo
 import eu.kanade.tachiyomi.animesource.model.TimeStamp
 import eu.kanade.tachiyomi.animesource.model.Video
 import eu.kanade.tachiyomi.animesource.online.AnimeHttpSource
+import eu.kanade.tachiyomi.core.diagnostics.Breadcrumb
+import eu.kanade.tachiyomi.core.diagnostics.VideoUrlValidator
 import eu.kanade.tachiyomi.data.database.models.anime.Episode
 import eu.kanade.tachiyomi.data.database.models.anime.isRecognizedNumber
 import eu.kanade.tachiyomi.data.database.models.anime.toDomainEpisode

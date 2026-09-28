@@ -64,7 +64,17 @@ object DiagnosticsScreen : Screen() {
 
         val allLines = remember(fullLog) { fullLog.lineSequence().filter { it.isNotBlank() }.toList() }
         val filteredLines = remember(allLines, filter) {
-            if (filter == "ALL") allLines else allLines.filter { it.contains("| $filter") || it.contains("| STREAM_") && filter == "STREAM" }
+            if (filter ==
+                "ALL"
+            ) {
+                allLines
+            } else {
+                allLines.filter {
+                    it.contains("| $filter") ||
+                        it.contains("| STREAM_") &&
+                        filter == "STREAM"
+                }
+            }
         }
         val visibleLines = filteredLines.takeLast(RENDER_LINES)
 
@@ -110,10 +120,15 @@ object DiagnosticsScreen : Screen() {
                         Text(" Copy")
                     }
                     TextButton(onClick = {
-                        context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
-                            type = "text/plain"
-                            putExtra(Intent.EXTRA_TEXT, fullLog)
-                        }, "Share diagnostics"))
+                        context.startActivity(
+                            Intent.createChooser(
+                                Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(Intent.EXTRA_TEXT, fullLog)
+                                },
+                                "Share diagnostics",
+                            ),
+                        )
                     }) {
                         Icon(Icons.Outlined.Share, contentDescription = "Share")
                         Text(" Share")

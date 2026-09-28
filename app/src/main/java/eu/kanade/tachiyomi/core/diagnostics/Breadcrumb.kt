@@ -111,7 +111,9 @@ object Breadcrumb {
             redactUrl(match.value)
         }
         value = value.replace(
-            Regex("(?i)(authorization|cookie|token|access_token|refresh_token|api[_-]?key|password|secret)=([^,;\\s]+)"),
+            Regex(
+                "(?i)(authorization|cookie|token|access_token|refresh_token|api[_-]?key|password|secret)=([^,;\\s]+)",
+            ),
             "$1=[REDACTED]",
         )
         return value.replace(Regex("\\s+"), " ").trim().take(MAX_DETAIL_LENGTH)
@@ -119,8 +121,11 @@ object Breadcrumb {
 
     private fun redactUrl(url: String): String = try {
         val marker = url.indexOf('?')
-        if (marker < 0) url.take(MAX_DETAIL_LENGTH)
-        else url.substring(0, marker).take(MAX_DETAIL_LENGTH) + "?[REDACTED]"
+        if (marker < 0) {
+            url.take(MAX_DETAIL_LENGTH)
+        } else {
+            url.substring(0, marker).take(MAX_DETAIL_LENGTH) + "?[REDACTED]"
+        }
     } catch (_: Throwable) {
         "[URL_REDACTED]"
     }
