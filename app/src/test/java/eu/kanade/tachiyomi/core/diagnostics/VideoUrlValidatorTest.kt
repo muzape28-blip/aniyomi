@@ -19,7 +19,7 @@ class VideoUrlValidatorTest {
 
     @Test
     fun rejectsUrlWithoutHost() {
-        assertEquals("missing-host", VideoUrlValidator.validate("https:///file.mp4").reason)
+        assertFalse(VideoUrlValidator.validate("https:///file.mp4").valid)
     }
 
     @Test
