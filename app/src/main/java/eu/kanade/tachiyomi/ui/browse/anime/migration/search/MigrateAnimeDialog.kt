@@ -33,6 +33,7 @@ import eu.kanade.domain.entries.anime.model.hasCustomCover
 import eu.kanade.presentation.components.IndicatorSize
 import eu.kanade.tachiyomi.animesource.AnimeSource
 import eu.kanade.tachiyomi.animesource.model.FetchType
+import eu.kanade.tachiyomi.core.diagnostics.Breadcrumb
 import eu.kanade.tachiyomi.data.cache.AnimeBackgroundCache
 import eu.kanade.tachiyomi.data.cache.AnimeCoverCache
 import eu.kanade.tachiyomi.data.download.anime.AnimeDownloadManager
@@ -230,6 +231,11 @@ internal class MigrateAnimeDialogScreenModel(
         val source = sourceManager.get(newAnime.source) ?: return
         val prevSource = sourceManager.get(oldAnime.source)
 
+        val operationId = "source_${System.currentTimeMillis()}"
+        Breadcrumb.log(
+            "STREAM_SOURCE_SWITCH_BEGIN",
+            "operationId=$operationId oldSource=${oldAnime.source} newSource=${newAnime.source}",
+        )
         mutableState.update { it.copy(isMigrating = true) }
 
         try {
@@ -241,7 +247,12 @@ internal class MigrateAnimeDialogScreenModel(
                 replace = replace,
                 flags = flags,
             )
-        } catch (_: Throwable) {
+            Breadcrumb.log("STREAM_SOURCE_SWITCH_OK", "operationId=$operationId newSource=${newAnime.source}")
+        } catch (e: Throwable) {
+            Breadcrumb.log(
+                "STREAM_SOURCE_SWITCH_FAIL",
+                "operationId=$operationId type=${e.javaClass.simpleName} message=${e.message}",
+            )
             // Explicitly stop if an error occurred; the dialog normally gets popped at the end
             // anyway
             mutableState.update { it.copy(isMigrating = false) }

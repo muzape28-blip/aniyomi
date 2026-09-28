@@ -44,6 +44,7 @@ import eu.kanade.presentation.util.formatEpisodeNumber
 import eu.kanade.presentation.util.isTabletUi
 import eu.kanade.tachiyomi.animesource.AnimeSource
 import eu.kanade.tachiyomi.animesource.model.FetchType
+import eu.kanade.tachiyomi.core.diagnostics.Breadcrumb
 import eu.kanade.tachiyomi.animesource.online.AnimeHttpSource
 import eu.kanade.tachiyomi.data.torrent.service.TorrentServerService
 import eu.kanade.tachiyomi.source.anime.isLocalOrStub
@@ -196,8 +197,12 @@ class AnimeScreen(
                 successState.anime.favorite
             },
             onMigrateClicked = {
+                Breadcrumb.log(
+                    "STREAM_SOURCE_SELECTION_BEGIN",
+                    "animeId=${successState.anime.id} source=${successState.source.id}",
+                )
                 navigator.push(MigrateAnimeSearchScreen(successState.anime.id))
-            }.takeIf { successState.anime.favorite },
+            },
             changeAnimeSkipIntro = screenModel::showAnimeSkipIntroDialog
                 .takeIf { successState.anime.favorite && successState.anime.fetchType == FetchType.Episodes },
             onMultiBookmarkClicked = screenModel::bookmarkEpisodes,
