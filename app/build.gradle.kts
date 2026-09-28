@@ -336,8 +336,8 @@ androidComponents {
     beforeVariants { variantBuilder ->
         // Disables standardBenchmark
         if (variantBuilder.buildType == "benchmark") {
-            variantBuilder.enable = variantBuilder.productFlavors.containsAll(
-                listOf("default" to "dev"),
+            variantBuilder.enable = variantBuilder.productFlavors.contains(
+                "default" to "streamingOnly",
             )
         }
     }
